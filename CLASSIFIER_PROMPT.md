@@ -32,6 +32,7 @@ Produce a JSON object matching this schema:
   "mcpServers": [],
   "compatibleWith": [],
   "workflows": [],
+  "blueprints": [],
   "highlights": [],
   "version": "",
   "repository": "",
@@ -106,6 +107,24 @@ Each workflow entry should have:
 
 If no explicit workflows exist, return an empty array `[]`. Don't invent workflows from behavioral rules.
 
+**blueprints** — Array of `{ name, displayName, description, complexity, services, outcomes }` objects. Blueprints are reproducible project systems the persona can build for someone else. Scan for:
+- A `blueprints/` directory with subdirectories
+- n8n workflow JSON files, Zapier configs, or other automation exports
+- Spreadsheet templates used as tracking systems
+- Bot configurations (Telegram, Slack, Discord)
+- Documentation describing systems the persona has built
+- References to deployed infrastructure (n8n instances, bots, pipelines)
+
+Each blueprint entry should have:
+- `name`: Slug (lowercase, hyphens). E.g., "telegram-intake", "accounting-pipeline"
+- `displayName`: Human-readable name. E.g., "Telegram Document Intake"
+- `description`: One sentence. What it builds and who it's for. Focus on the outcome.
+- `complexity`: "simple" (1 service, few steps), "medium" (2-3 services), "complex" (4+ services)
+- `services`: Array of service names required. E.g., ["n8n", "telegram", "google-drive", "google-sheets"]
+- `outcomes`: Array of 2-4 specific outcomes. E.g., ["Documents sent to Telegram are automatically classified and filed", "Every filed document is logged in a tracking spreadsheet"]
+
+If no blueprints exist in the repo, return an empty array `[]`. Don't invent blueprints from behavioral descriptions. A blueprint must have actual implementation artifacts (workflow files, templates, setup instructions) to qualify.
+
 **highlights** — 5-9 bullet points. THE MOST IMPORTANT FIELD. This is what sells the persona to someone browsing the catalog.
 
 Rules for highlights:
@@ -132,6 +151,8 @@ Before returning the entry, verify:
 - [ ] Tags include at least one role, one capability, one domain tag
 - [ ] Highlights answer "why install this?" not "what files are included?"
 - [ ] Workflows are real commands from the repo, not invented
+- [ ] Blueprints have actual implementation artifacts, not just descriptions
+- [ ] Blueprint outcomes are specific ("files documents to Drive") not generic ("automates things")
 - [ ] mcpServers only includes integrations actually referenced in the repo
 - [ ] compatibleWith reflects actual tool references, not assumptions
 - [ ] No generic/filler content anywhere
@@ -153,6 +174,7 @@ Output:
   "mcpServers": [],
   "compatibleWith": ["Claude Code", "Cursor", "Windsurf", "Codex CLI", "Copilot"],
   "workflows": [],
+  "blueprints": [],
   "highlights": [
     "Penalty clause for suboptimal code — treats every function as if $100 is on the line for performance",
     "Preferred crate list enforced — cargo, serde, axum, tokio, polars. No random dependencies.",

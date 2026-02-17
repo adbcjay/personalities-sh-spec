@@ -40,6 +40,14 @@ my-persona/
 │   └── *.md
 ├── templates/          # optional  File templates the persona generates
 │   └── *.*
+├── blueprints/         # optional  Reproducible project systems
+│   └── <project-name>/
+│       ├── blueprint.yaml
+│       ├── README.md
+│       ├── setup.md
+│       ├── workflows/  # n8n JSON, Zapier configs, etc.
+│       ├── templates/  # Spreadsheets, folder structures, configs
+│       └── examples/   # Sample outputs or screenshots
 └── LICENSE             # optional  Defaults to MIT if absent
 ```
 
@@ -560,7 +568,213 @@ Rules:
 
 ---
 
-## 10. README.md
+## 10. blueprints/
+
+Blueprints are reproducible project systems the persona has built and can rebuild for someone else. A command tells the AI what to do in a conversation. A skill gives the AI domain knowledge. A blueprint gives the AI the complete architecture for a system it builds once and then operates.
+
+Examples: a Telegram bot that files documents to Google Drive, an accounting pipeline with a custom spreadsheet, a multi-workflow automation suite on n8n, a partnership tracking system.
+
+Each blueprint is a subdirectory inside `blueprints/`:
+
+```
+blueprints/
+├── telegram-intake/
+│   ├── blueprint.yaml       # Metadata and prerequisites
+│   ├── README.md            # What this builds and who it's for
+│   ├── setup.md             # Step-by-step build instructions
+│   ├── workflows/           # Automation configs (n8n JSON, Zapier, etc.)
+│   │   ├── main-workflow.json
+│   │   └── sub-sheet-append.json
+│   ├── templates/           # Spreadsheet templates, folder structures
+│   │   └── pending-entries.xlsx
+│   └── examples/            # Sample outputs or screenshots
+│       └── sample-filing.md
+└── accounting-pipeline/
+    ├── blueprint.yaml
+    ├── README.md
+    ├── setup.md
+    └── templates/
+        └── accounting-sheet.xlsx
+```
+
+### blueprint.yaml
+
+```yaml
+name: telegram-intake                  # Lowercase, hyphens. 3-40 chars.
+display_name: Telegram Document Intake # Human-readable name.
+version: 1.0.0                        # Semver.
+description: >
+  Telegram bot that receives documents and photos, classifies them with AI,
+  renames them, and files them to the correct Google Drive folder.
+  Tracks everything in a Google Sheet.
+
+# What services are needed to build this system
+requires:
+  services:
+    - name: n8n
+      purpose: "Workflow automation engine. Self-hosted or cloud."
+      required: true
+    - name: telegram-bot
+      purpose: "Telegram Bot API token via @BotFather."
+      required: true
+    - name: google-drive
+      purpose: "File storage destination."
+      required: true
+    - name: google-sheets
+      purpose: "Tracking spreadsheet for filed documents."
+      required: true
+    - name: anthropic-api
+      purpose: "AI classification of documents."
+      required: true
+
+# User-specific values the setup will need
+variables:
+  - key: TELEGRAM_BOT_TOKEN
+    prompt: "Paste your Telegram bot token from @BotFather"
+    required: true
+  - key: DRIVE_FOLDER_ID
+    prompt: "Google Drive folder ID for the filing destination"
+    required: true
+  - key: SHEET_ID
+    prompt: "Google Sheet ID for the tracking spreadsheet"
+    required: true
+
+# Estimated setup time (honest, for a non-developer following instructions)
+setup_time_minutes: 30
+
+# Complexity: simple (one service, few steps), medium (2-3 services),
+# complex (4+ services, custom configuration)
+complexity: complex
+
+# What the user gets when this is fully set up
+outcomes:
+  - "Documents sent to Telegram are automatically classified and filed"
+  - "Every filed document is logged in a tracking spreadsheet"
+  - "AI renames files with standardized naming conventions"
+  - "Handles photos, PDFs, and text messages"
+```
+
+### README.md (per blueprint)
+
+Written for someone deciding whether to build this system. Not a setup guide (that's setup.md).
+
+```markdown
+# Telegram Document Intake
+
+Receive documents via Telegram, classify them with AI, and file them to
+Google Drive automatically. Every document gets renamed, categorized,
+and logged in a tracking spreadsheet.
+
+## What It Builds
+- Telegram bot that accepts documents, photos, and text messages
+- AI-powered classification (expense, revenue, legal, etc.)
+- Automatic filing to the correct Google Drive folder
+- Tracking spreadsheet with status, classification, and file links
+
+## Who It's For
+Small teams (2-10 people) who receive documents from multiple sources
+and waste time manually sorting and filing them.
+
+## What You Need
+- n8n instance (self-hosted or cloud)
+- Telegram account + bot token
+- Google Drive + Sheets access
+- Anthropic API key
+
+## What It Costs to Run
+- n8n: free (self-hosted) or ~$20/month (cloud)
+- Anthropic API: ~$0.01-0.05 per document classified
+- Everything else: free tier
+
+## Example
+[Send a photo of a receipt to the bot]
+Bot: "Filed: 2026-02-17 Office Supplies Receipt $47.50 → Expenses/Office"
+```
+
+### setup.md (per blueprint)
+
+Step-by-step build instructions. Written for an AI agent to follow, but readable by a human too. The AI installs this by reading setup.md and executing each step.
+
+Key rules:
+- Every step must be concrete and testable. Not "configure the bot" but "send /newbot to @BotFather, set the name to [X], copy the token."
+- Include expected outputs. After Step 3, you should see: [X].
+- Mark which steps need human action (OAuth clicks, bot token creation) vs. which the AI handles.
+- Reference files in `workflows/` and `templates/` by relative path.
+- Use `{{VARIABLES}}` for user-specific values.
+
+```markdown
+# Setup: Telegram Document Intake
+
+## Step 1: Create the Telegram Bot (human action)
+1. Open Telegram, message @BotFather
+2. Send /newbot
+3. Set name: {{YOUR_COMPANY}} Filing Bot
+4. Copy the bot token — you'll need it in Step 3
+
+## Step 2: Create the Tracking Sheet (AI action)
+1. Create a Google Sheet with these columns: [list from template]
+2. Or import the template from templates/pending-entries.xlsx
+3. Note the Sheet ID from the URL
+
+## Step 3: Deploy the n8n Workflows (AI action)
+1. Import workflows/main-workflow.json into your n8n instance
+2. Import workflows/sub-sheet-append.json
+3. Configure credentials:
+   - Telegram: use bot token from Step 1
+   - Google Drive: OAuth (human clicks "Allow" once)
+   - Google Sheets: same OAuth
+   - Anthropic: paste API key
+4. Activate the main workflow
+
+## Step 4: Test (AI + human)
+1. Send a photo of any receipt to the bot
+2. Expected: bot replies with classification and filing confirmation
+3. Check the tracking sheet — new row should appear
+```
+
+### workflows/ directory
+
+Contains exportable automation configurations. Supported formats:
+- n8n workflow JSON (exported via n8n UI or API)
+- Zapier/Make blueprint files
+- Shell scripts
+- Any configuration file an automation tool can import
+
+Rules:
+- Strip credentials from all workflow files. Use placeholder values.
+- Include a comment or note field explaining what each workflow does.
+- Workflow files should be importable as-is after credential setup.
+- If workflows have dependencies on each other (sub-workflows), document the execution order.
+
+### templates/ directory
+
+Contains starter files the blueprint uses:
+- Spreadsheet templates (.xlsx, .csv) with headers, formatting, formulas
+- Folder structure definitions (as YAML or markdown)
+- Configuration files
+- Sample data files
+
+Rules:
+- Templates should be ready to use, not empty shells. Include example data.
+- Spreadsheet templates should have formatting, column headers, and any formulas pre-configured.
+- Strip real data. Use realistic but fictional placeholder data.
+
+### Validation Rules for Blueprints
+
+| Rule | Check |
+|------|-------|
+| `blueprint.yaml` exists and parses | YAML syntax valid, required fields present |
+| `README.md` exists | Describes what the blueprint builds |
+| `setup.md` exists | Has numbered, concrete steps |
+| `complexity` matches reality | simple/medium/complex reflects actual service count |
+| No credentials in workflow files | No API keys, tokens, passwords |
+| No absolute paths | All references are relative |
+| `outcomes` are specific | Not "automates things" but "files documents to Drive" |
+| Setup steps distinguish human vs. AI actions | OAuth clicks and token creation marked as human |
+
+---
+
+## 11. README.md
 
 The catalog listing. Written for someone browsing personalities.sh deciding whether to install.
 
@@ -598,7 +812,7 @@ Rules:
 
 ---
 
-## 11. Validation Rules
+## 12. Validation Rules
 
 The personalities.sh evaluator checks every submission against these rules before listing.
 
@@ -662,7 +876,7 @@ Trust tiers based on evaluation results:
 
 ---
 
-## 12. Installation
+## 13. Installation
 
 When a user runs `npx personas install <name>`, the installer:
 
@@ -705,7 +919,7 @@ Conflict resolution: the extending persona wins. If both define `## Communicatio
 
 ---
 
-## 13. Packaging Guide for Creators
+## 14. Packaging Guide for Creators
 
 You already have a working AI setup. Here's how to turn it into a persona package.
 
@@ -721,6 +935,7 @@ Your existing configuration is probably in `~/.claude/CLAUDE.md`, `~/.claude/com
    - `SETUP.md` from your MCP server configuration
    - `README.md` as a catalog description
    - Copies of your commands/ and any relevant state files
+   - `blueprints/` for any project systems you've built (automation workflows, tracking spreadsheets, bot configurations, etc.)
 
 3. **Review what it generated.** Strip personal information you don't want public. Replace real names, emails, and company details with `{{VARIABLE}}` placeholders.
 
@@ -775,6 +990,36 @@ variables: list[object]
     prompt: string                 # Question shown to user during install
     required: boolean
     default: string | null
+
+blueprints: list[string]           # Names of subdirectories in blueprints/
+                                   # Each must contain blueprint.yaml
+```
+
+## Appendix A.1: blueprint.yaml Schema
+
+```yaml
+# REQUIRED
+name: string              # 3-40 chars, lowercase, hyphens only
+display_name: string      # Human-readable name
+version: string           # Semver (X.Y.Z)
+description: string       # 1-3 sentences
+complexity: enum          # simple | medium | complex
+outcomes: list[string]    # What the user gets when it's built (2-6 items)
+
+# REQUIRED
+requires:
+  services: list[object]
+    - name: string
+      purpose: string
+      required: boolean
+
+# OPTIONAL
+setup_time_minutes: number
+variables: list[object]   # Same format as persona.yaml variables
+  - key: string
+    prompt: string
+    required: boolean
+    default: string | null
 ```
 
 ## Appendix B: Reserved Variable Names
@@ -797,3 +1042,4 @@ These variables have standard meanings across all personas. Use them when applic
 | Version | Date | Changes |
 |---------|------|---------|
 | 0.1 | 2026-02-17 | Initial draft |
+| 0.2 | 2026-02-17 | Added blueprints (Section 10) |

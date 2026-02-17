@@ -48,6 +48,7 @@ Read every file you discovered. Identify:
 8. **Persistent state**: Goals, tasks, contacts, logs, journals.
 9. **Domain knowledge**: Industry-specific rules, frameworks, or reference material.
 10. **Personal data**: Names, emails, company names, timezones -- anything that should become a `{{VARIABLE}}`.
+11. **Project systems (blueprints)**: Has this user built any automations, bots, pipelines, or operational systems with their AI? Look for: n8n/Zapier/Make workflows, custom spreadsheet trackers, Telegram/Slack bots, file management systems, data pipelines, CI/CD configs. These become blueprints.
 
 ### Step 3: Identify Personal Data for Replacement
 
@@ -258,15 +259,86 @@ Create at least one example interaction file in `examples/`:
 
 Use the most impressive or representative interaction pattern. Replace personal data with variables or realistic fictional data.
 
+#### 4i. blueprints/ (if the user has built project systems)
+
+This is the most valuable part of many personas. If the user has built automations, bots, pipelines, or operational systems, package each one as a blueprint.
+
+**How to discover blueprints:**
+- Ask: "Have you built any automations, bots, or systems with your AI? For example: n8n/Zapier workflows, Telegram bots, spreadsheet-based tracking systems, file management pipelines, scheduled reports."
+- Check their n8n/Zapier account for active workflows.
+- Check their Google Sheets for structured tracking spreadsheets.
+- Check their Telegram/Slack for bot integrations.
+- Check their conversation history for multi-session project work.
+- Check their memory files for project documentation.
+
+**For each blueprint discovered, create a subdirectory in `blueprints/`:**
+
+```
+blueprints/<project-name>/
+├── blueprint.yaml       # Metadata, prerequisites, outcomes
+├── README.md            # What it builds, who it's for
+├── setup.md             # Step-by-step build instructions
+├── workflows/           # Exportable configs (n8n JSON, etc.)
+├── templates/           # Spreadsheets, folder structures
+└── examples/            # Sample outputs
+```
+
+**blueprint.yaml** must include:
+```yaml
+name: [lowercase-hyphens]
+display_name: [Human Readable Name]
+version: 1.0.0
+description: [1-2 sentences. What it builds.]
+complexity: [simple | medium | complex]
+requires:
+  services:
+    - name: [service]
+      purpose: [what for]
+      required: [true/false]
+outcomes:
+  - [What the user gets when it's built. Be specific.]
+setup_time_minutes: [honest estimate for a non-developer]
+variables:
+  - key: [VARIABLE_NAME]
+    prompt: [question to ask]
+    required: [true/false]
+```
+
+**setup.md rules:**
+- Number every step.
+- Mark which steps need human action (creating bot tokens, clicking OAuth) vs. which the AI handles (importing workflows, configuring connections).
+- Include expected outputs after key steps: "After Step 3, you should see: [X]."
+- Reference files in `workflows/` and `templates/` by relative path.
+- Every service credential should be set up via `{{VARIABLE}}` or OAuth flow.
+
+**workflows/ directory:**
+- Export automation workflows as importable files (n8n JSON, Zapier configs, etc.).
+- Strip ALL credentials. Replace with placeholder values.
+- Add notes explaining what each workflow does and how they connect.
+- If workflows depend on each other (sub-workflows), document the import order.
+
+**templates/ directory:**
+- Include ready-to-use spreadsheet templates (.xlsx, .csv) with headers, formatting, and formulas.
+- Include folder structure definitions if the blueprint creates organized storage.
+- All templates should contain example data, not be empty.
+- Strip real data. Use realistic but fictional placeholder data.
+
+**What makes a good blueprint:**
+- **Solves a real problem.** Not "automates stuff" but "classifies and files 50+ documents a week without manual sorting."
+- **Reproducible.** Someone with zero context should be able to follow setup.md and get a working system.
+- **Honest about complexity.** If it takes 45 minutes and 3 OAuth flows, say that. Don't pretend it's 5 minutes.
+- **Shows outcomes.** The README should make someone think "I need this" before they look at the setup.
+
 ### Step 5: Security Self-Check
 
 Before finalizing, scan every generated file for:
 
-1. **Credentials**: API keys, tokens, passwords, connection strings. Remove all.
-2. **Real personal data that slipped through**: Names, emails, phone numbers, addresses that should be variables. Replace.
-3. **Hardcoded URLs**: Internal company URLs, private dashboards, local network addresses. Remove or variablize.
+1. **Credentials**: API keys, tokens, passwords, connection strings. Remove all. Pay special attention to workflow JSON files in `blueprints/*/workflows/` -- exported n8n/Zapier configs often embed credentials.
+2. **Real personal data that slipped through**: Names, emails, phone numbers, addresses that should be variables. Replace. Check spreadsheet templates too.
+3. **Hardcoded URLs**: Internal company URLs, private dashboards, local network addresses, webhook URLs. Remove or variablize.
 4. **Dangerous instructions**: Commands that delete files, send unsolicited messages, access other apps' credentials, or make network requests to fixed endpoints. Rewrite to require user confirmation.
 5. **Absolute paths**: File paths like `/Users/mike/...` or `C:\Users\...`. Convert to relative paths or variables.
+6. **Workflow secrets**: n8n workflow JSON contains `credentials` objects. Strip all credential values. Zapier configs contain API keys in step configurations. Replace with `{{VARIABLE}}` placeholders.
 
 Report what you found and fixed.
 
@@ -286,6 +358,10 @@ Check the generated package against these rules:
 | No hardcoded credentials anywhere | |
 | No absolute file paths anywhere | |
 | Total package would be under 5 MB | |
+| Each `blueprints/*/blueprint.yaml` has required fields | |
+| Each blueprint has `setup.md` with numbered steps | |
+| No credentials in workflow JSON files | |
+| Blueprint `outcomes` are specific, not generic | |
 
 Report results as a checklist. If anything fails, fix it before presenting to the user.
 
@@ -295,11 +371,12 @@ Show the user:
 1. The complete directory structure with file sizes.
 2. The full content of `persona.yaml`.
 3. The full content of `PERSONA.md`.
-4. A summary of what was included vs. what was stripped (personal data, credentials, etc.).
-5. Any decisions you made that the user should review (category choice, which content goes in which section, what was marked required vs. optional).
-6. The validation checklist results.
+4. A summary of blueprints discovered and packaged (if any). For each: name, what it builds, services required, estimated setup time.
+5. A summary of what was included vs. what was stripped (personal data, credentials, etc.).
+6. Any decisions you made that the user should review (category choice, which content goes in which section, what was marked required vs. optional).
+7. The validation checklist results.
 
-Ask the user to review before writing the files to disk.
+Ask the user to review before writing the files to disk. Pay special attention to blueprints -- the user may have built systems they consider internal/proprietary and don't want to share.
 
 ---
 
@@ -309,8 +386,8 @@ You don't need to understand the steps above. Just do this:
 
 1. Open your AI coding agent (Claude Code, Cursor, etc.).
 2. Paste this entire document into the chat.
-3. Say: **"Package my current AI setup as a persona. Follow these instructions."**
-4. Review what it generates. Strip anything you don't want public.
+3. Say: **"Package my current AI setup as a persona. Include any automations, bots, or systems I've built as blueprints. Follow these instructions."**
+4. Review what it generates. Strip anything you don't want public. Especially check the blueprints folder -- you might not want to share every system you've built.
 5. Push the `persona-package/` folder to a GitHub repo.
 6. Submit to personalities.sh.
 
