@@ -339,6 +339,7 @@ Before finalizing, scan every generated file for:
 4. **Dangerous instructions**: Commands that delete files, send unsolicited messages, access other apps' credentials, or make network requests to fixed endpoints. Rewrite to require user confirmation.
 5. **Absolute paths**: File paths like `/Users/mike/...` or `C:\Users\...`. Convert to relative paths or variables.
 6. **Workflow secrets**: n8n workflow JSON contains `credentials` objects. Strip all credential values. Zapier configs contain API keys in step configurations. Replace with `{{VARIABLE}}` placeholders.
+7. **Identifiers in automation logic**: Exported workflows contain hardcoded IDs everywhere. Scan code nodes, function blocks, and configuration parameters for: Telegram user IDs, bot IDs, Google Drive folder IDs, Google Sheet IDs, Shared Drive IDs, webhook paths, channel IDs, group chat IDs, company names, team member names, and organization-specific classification rules. Replace ALL with descriptive placeholders (YOUR_SHEET_ID, YOUR_FOLDER_ID, YOUR_BOT_USERNAME, YOUR_COMPANY, etc.). This is the most commonly missed category -- workflow logic often embeds dozens of resource IDs that are not credentials but are still personally identifying.
 
 Report what you found and fixed.
 
